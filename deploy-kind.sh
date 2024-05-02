@@ -62,6 +62,7 @@ networking:
   serviceSubnet: ${SVC_CIDR}
 EOF
 
+# https://docs.cilium.io/en/latest/network/servicemesh/istio/
 cilium install --version ${CILIUM_VERSION} --wait \
   --set ipv4NativeRoutingCIDR=10.0.0.0/8 \
   --set cluster.id=${CLUSTER_ID} \
@@ -72,6 +73,7 @@ cilium install --version ${CILIUM_VERSION} --wait \
   --set externalIPs.enabled=true \
   --set socketLB.enabled=true \
   --set socketLB.hostNamespaceOnly=true \
+  --set cni.exclusive=true \
   --set k8sClientRateLimit.qps=50 \
   --set k8sClientRateLimit.burst=100
 
@@ -127,6 +129,7 @@ kubectl create secret generic cacerts -n istio-system \
   --from-file=certs/${CONTEXT}/root-cert.pem \
   --from-file=certs/${CONTEXT}/cert-chain.pem
 
+# https://istio.io/latest/docs/setup/install/multicluster/multi-primary_multi-network/
 # https://istio.io/latest/docs/reference/config/istio.operator.v1alpha1/
 # https://istio.io/v1.5/docs/reference/config/installation-options/
 cat <<EOF | istioctl install -y -f -
@@ -135,7 +138,7 @@ kind: IstioOperator
 spec:
   values:
     global:
-      meshID: mesh${CLUSTER_ID}
+      meshID: mesh1
       multiCluster:
         clusterName: ${CONTEXT}
       network: ${CONTEXT}
