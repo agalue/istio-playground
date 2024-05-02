@@ -118,6 +118,7 @@ helm upgrade --install metrics-server metrics-server/metrics-server \
  -n kube-system --set args={--kubelet-insecure-tls} --wait
 
 kubectl create namespace istio-system
+kubectl label namespace istio-system topology.istio.io/network=${CONTEXT}
 kubectl create secret generic cacerts -n istio-system \
   --from-file=certs/${CONTEXT}/ca-cert.pem \
   --from-file=certs/${CONTEXT}/ca-key.pem \
