@@ -6,11 +6,11 @@ trap 's=$?; echo >&2 "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
 export CTX_CLUSTER1="kind-east"
 export CTX_CLUSTER2="kind-west"
 
-kubectl create --context="${CTX_CLUSTER1}" namespace sample \
-  --dry-run=client -o yaml | kubectl apply -f -
+kubectl create namespace sample \
+  --dry-run=client -o yaml | kubectl apply --context="${CTX_CLUSTER1}" -f -
 
-kubectl create --context="${CTX_CLUSTER2}" namespace sample \
-  --dry-run=client -o yaml | kubectl apply -f -
+kubectl create namespace sample \
+  --dry-run=client -o yaml | kubectl apply --context="${CTX_CLUSTER2}" -f -
 
 kubectl label --context="${CTX_CLUSTER1}" namespace sample \
   istio-injection=enabled --overwrite
