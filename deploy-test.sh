@@ -3,6 +3,9 @@
 set -euo pipefail
 trap 's=$?; echo >&2 "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
 
+export CTX_CLUSTER1="kind-east"
+export CTX_CLUSTER2="kind-west"
+
 kubectl create --context="${CTX_CLUSTER1}" namespace sample
 
 kubectl create --context="${CTX_CLUSTER2}" namespace sample

@@ -1,4 +1,6 @@
 #!/bin/bash
+#
+# Source: https://github.com/agalue/LGTM-PoC/blob/main/deploy-kind.sh
 
 set -euo pipefail
 trap 's=$?; echo >&2 "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
@@ -125,6 +127,8 @@ kubectl create secret generic cacerts -n istio-system \
   --from-file=certs/${CONTEXT}/root-cert.pem \
   --from-file=certs/${CONTEXT}/cert-chain.pem
 
+# https://istio.io/latest/docs/reference/config/istio.operator.v1alpha1/
+# https://istio.io/v1.5/docs/reference/config/installation-options/
 cat <<EOF | istioctl install -y -f -
 apiVersion: install.istio.io/v1alpha1
 kind: IstioOperator
@@ -199,5 +203,5 @@ spec:
     tls:
       mode: AUTO_PASSTHROUGH
     hosts:
-    - "*.${DOMAIN}"
+    - "*.local"
 EOF
