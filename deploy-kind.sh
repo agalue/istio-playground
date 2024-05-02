@@ -135,6 +135,8 @@ spec:
       multiCluster:
         clusterName: ${CONTEXT}
       network: ${CONTEXT}
+      proxy:
+        clusterDomain: ${DOMAIN}
 EOF
 
 cat <<EOF | istioctl install -y -f -
@@ -177,6 +179,8 @@ spec:
         injectionTemplate: gateway
     global:
       network: ${CONTEXT}
+      proxy:
+        clusterDomain: ${DOMAIN}
 EOF
 
 cat <<EOF | kubectl apply -f -
@@ -195,5 +199,5 @@ spec:
     tls:
       mode: AUTO_PASSTHROUGH
     hosts:
-    - "*.local"
+    - "*.${DOMAIN}"
 EOF
