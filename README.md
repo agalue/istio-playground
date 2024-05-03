@@ -41,3 +41,13 @@ kubectl exec --context="${CTX_CLUSTER2}" -n sample -c sleep \
     app=sleep -o jsonpath='{.items[0].metadata.name}')" \
     -- curl -sS helloworld.sample:5000/hello
 ```
+
+Additionally,
+
+```bash
+for ctx in "${CTX_CLUSTER1}" "${CTX_CLUSTER2}"; do
+    echo "Context: $ctx"
+    pod_name=$(kubectl --context $ctx get pod -n sample -l app=sleep -o jsonpath='{.items[0].metadata.name}')
+    istioctl --context $ctx proxy-config endpoint $pod_name.sample | grep helloworld
+done
+```

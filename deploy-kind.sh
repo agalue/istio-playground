@@ -119,7 +119,7 @@ spec:
 EOF
 
 helm upgrade --install metrics-server metrics-server/metrics-server \
- -n kube-system --set args={--kubelet-insecure-tls} --wait
+ -n kube-system --set args={--kubelet-insecure-tls}
 
 kubectl create namespace istio-system
 kubectl label namespace istio-system topology.istio.io/network=${CONTEXT}
@@ -140,10 +140,14 @@ spec:
     global:
       meshID: mesh1
       multiCluster:
+        enabled: true
         clusterName: ${CONTEXT}
       network: ${CONTEXT}
       proxy:
         clusterDomain: ${DOMAIN}
+    meshConfig:
+      trustDomain: ${DOMAIN}
+      enableTracing: false
 EOF
 
 cat <<EOF | istioctl install -y -f -
@@ -186,8 +190,6 @@ spec:
         injectionTemplate: gateway
     global:
       network: ${CONTEXT}
-      proxy:
-        clusterDomain: ${DOMAIN}
 EOF
 
 cat <<EOF | kubectl apply -f -
