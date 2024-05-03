@@ -4,7 +4,6 @@ set -euo pipefail
 trap 's=$?; echo >&2 "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
 
 CONTEXT=${CONTEXT-west}
-DOMAIN=${DOMAIN-${CONTEXT}.cluster.local}
 SUBNET=${SUBNET-240} # For Cilium L2/LB (must be unique across all clusters)
 WORKERS=${WORKERS-1}
 CLUSTER_ID=${CLUSTER_ID-2} # Unique on each cluster

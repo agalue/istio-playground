@@ -9,8 +9,7 @@ for cmd in "docker" "kind" "cilium" "kubectl" "jq" "helm" "istioctl"; do
   type $cmd >/dev/null 2>&1 || { echo >&2 "$cmd required but it's not installed; aborting."; exit 1; }
 done
 
-CONTEXT=${CONTEXT-kind} # Kubeconfig Profile and cluster sub-domain
-DOMAIN=${DOMAIN-${CONTEXT}.cluster.local}
+CONTEXT=${CONTEXT-test} # Kubernetes Context Name (in Kind, it would be `kind-${CONTEXT}`)
 WORKERS=${WORKERS-2} # Number of worker nodes in the clusters
 SUBNET=${SUBNET-248} # Last octet from the /29 CIDR subnet to use for Cilium L2/LB
 CLUSTER_ID=${CLUSTER_ID-1}
@@ -45,13 +44,6 @@ apiVersion: kind.x-k8s.io/v1alpha4
 name: ${CONTEXT}
 nodes:
 - role: control-plane
-  kubeadmConfigPatches:
-  - |
-    ---
-    apiVersion: kubeadm.k8s.io/v1beta3
-    kind: ClusterConfiguration
-    networking:
-      dnsDomain: ${DOMAIN}
 ${WORKER_YAML}
 networking:
   ipFamily: ipv4
@@ -145,11 +137,6 @@ spec:
         enabled: true
         clusterName: ${CONTEXT}
       network: ${CONTEXT}
-      proxy:
-        clusterDomain: ${DOMAIN}
-    meshConfig:
-      trustDomain: ${DOMAIN}
-      enableTracing: false
 EOF
 
 cat <<EOF | istioctl install -y -f -
