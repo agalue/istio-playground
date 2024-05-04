@@ -16,7 +16,6 @@ CLUSTER_ID=${CLUSTER_ID-1}
 POD_CIDR=${POD_CIDR-10.244.0.0/16}
 SVC_CIDR=${SVC_CIDR-10.96.0.0/12}
 CILIUM_VERSION=${CILIUM_VERSION-1.15.4}
-HOST_IP=${HOST_IP-127.0.0.1} # The IP address of your machine to expose API Server (don't change when using OrbStack)
 
 # Abort if the cluster exists; if so, ensure the kubeconfig is exported
 CLUSTERS=($(kind get clusters | tr '\n' ' '))
@@ -49,7 +48,6 @@ networking:
   ipFamily: ipv4
   disableDefaultCNI: true
   kubeProxyMode: none
-  apiServerAddress: ${HOST_IP}
   podSubnet: ${POD_CIDR}
   serviceSubnet: ${SVC_CIDR}
 EOF
