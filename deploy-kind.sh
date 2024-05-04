@@ -63,7 +63,7 @@ cilium install --version ${CILIUM_VERSION} --wait \
   --set externalIPs.enabled=true \
   --set socketLB.enabled=true \
   --set socketLB.hostNamespaceOnly=true \
-  --set cni.exclusive=true \
+  --set cni.exclusive=false \
   --set k8sClientRateLimit.qps=50 \
   --set k8sClientRateLimit.burst=100
 
