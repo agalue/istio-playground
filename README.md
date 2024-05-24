@@ -50,32 +50,14 @@ You should see:
 
 ```bash
 Context: kind-east
-10.11.1.248:5000                                        HEALTHY     OK                outbound|5000||helloworld.sample.svc.cluster.local
-192.168.228.242:15443                                   HEALTHY     OK                outbound|5000||helloworld.sample.svc.cluster.local
+10.11.1.206:5000                                        HEALTHY     OK                outbound|5000||helloworld.sample.svc.cluster.local
+10.21.1.185:5000                                        HEALTHY     OK                outbound|5000||helloworld.sample.svc.cluster.local
 Context: kind-west
-10.21.1.3:5000                                          HEALTHY     OK                outbound|5000||helloworld.sample.svc.cluster.local
-192.168.228.250:15443                                   HEALTHY     OK                outbound|5000||helloworld.sample.svc.cluster.local
+10.11.1.206:5000                                        HEALTHY     OK                outbound|5000||helloworld.sample.svc.cluster.local
+10.21.1.185:5000                                        HEALTHY     OK                outbound|5000||helloworld.sample.svc.cluster.local
 ```
 
-The IP addresses that start with `192.168.228.` are the public IP of the LB from the sibling cluster:
-
-```bash
-for ctx in "kind-east" "kind-west"; do
-    echo "Context: $ctx"
-    kubectl --context $ctx get svc -n istio-system istio-eastwestgateway
-done
-```
-
-The above produces:
-
-```bash
-Context: kind-east
-NAME                    TYPE           CLUSTER-IP    EXTERNAL-IP       PORT(S)                                                           AGE
-istio-eastwestgateway   LoadBalancer   10.12.7.171   192.168.228.250   15021:31815/TCP,15443:30465/TCP,15012:32123/TCP,15017:30309/TCP   4m21s
-Context: kind-west
-NAME                    TYPE           CLUSTER-IP      EXTERNAL-IP       PORT(S)                                                           AGE
-istio-eastwestgateway   LoadBalancer   10.22.249.140   192.168.228.242   15021:30742/TCP,15443:31607/TCP,15012:32301/TCP,15017:31203/TCP   2m59s
-```
+Note that the IP addresses are coming from both clusters.
 
 To test connectivity, run the following:
 

@@ -13,9 +13,9 @@ CONTEXT=${CONTEXT-test} # Kubernetes Context Name (in Kind, it would be `kind-${
 WORKERS=${WORKERS-2} # Number of worker nodes in the clusters
 SUBNET=${SUBNET-248} # Last octet from the /29 CIDR subnet to use for Cilium L2/LB
 CLUSTER_ID=${CLUSTER_ID-1}
-POD_CIDR=${POD_CIDR-10.244.0.0/16}
-SVC_CIDR=${SVC_CIDR-10.96.0.0/12}
-CILIUM_VERSION=${CILIUM_VERSION-1.15.4}
+POD_CIDR=${POD_CIDR-10.244.0.0/16} # Must be under 10.0.0.0/8
+SVC_CIDR=${SVC_CIDR-10.96.0.0/12} # Must be under 10.0.0.0/8
+CILIUM_VERSION=${CILIUM_VERSION-1.15.5}
 
 # Abort if the cluster exists; if so, ensure the kubeconfig is exported
 CLUSTERS=($(kind get clusters | tr '\n' ' '))
@@ -55,6 +55,7 @@ EOF
 # https://docs.cilium.io/en/latest/network/servicemesh/istio/
 cilium install --version ${CILIUM_VERSION} --wait \
   --set ipv4NativeRoutingCIDR=10.0.0.0/8 \
+  --set enableIPv4Masquerade=false \
   --set cluster.id=${CLUSTER_ID} \
   --set cluster.name=${CONTEXT} \
   --set ipam.mode=kubernetes \
@@ -134,66 +135,66 @@ spec:
       multiCluster:
         enabled: true
         clusterName: ${CONTEXT}
-      network: ${CONTEXT}
+      network: cilium
 EOF
 
-cat <<EOF | istioctl install -y -f -
-apiVersion: install.istio.io/v1alpha1
-kind: IstioOperator
-metadata:
-  name: eastwest
-spec:
-  profile: empty
-  components:
-    ingressGateways:
-    - name: istio-eastwestgateway
-      label:
-        istio: eastwestgateway
-        app: istio-eastwestgateway
-        topology.istio.io/network: ${CONTEXT}
-      enabled: true
-      k8s:
-        env:
-        # traffic through this gateway should be routed inside the network
-        - name: ISTIO_META_REQUESTED_NETWORK_VIEW
-          value: ${CONTEXT}
-        service:
-          ports:
-          - name: status-port
-            port: 15021
-            targetPort: 15021
-          - name: tls
-            port: 15443
-            targetPort: 15443
-          - name: tls-istiod
-            port: 15012
-            targetPort: 15012
-          - name: tls-webhook
-            port: 15017
-            targetPort: 15017
-  values:
-    gateways:
-      istio-ingressgateway:
-        injectionTemplate: gateway
-    global:
-      network: ${CONTEXT}
-EOF
+# cat <<EOF | istioctl install -y -f -
+# apiVersion: install.istio.io/v1alpha1
+# kind: IstioOperator
+# metadata:
+#   name: eastwest
+# spec:
+#   profile: empty
+#   components:
+#     ingressGateways:
+#     - name: istio-eastwestgateway
+#       label:
+#         istio: eastwestgateway
+#         app: istio-eastwestgateway
+#         topology.istio.io/network: ${CONTEXT}
+#       enabled: true
+#       k8s:
+#         env:
+#         # traffic through this gateway should be routed inside the network
+#         - name: ISTIO_META_REQUESTED_NETWORK_VIEW
+#           value: ${CONTEXT}
+#         service:
+#           ports:
+#           - name: status-port
+#             port: 15021
+#             targetPort: 15021
+#           - name: tls
+#             port: 15443
+#             targetPort: 15443
+#           - name: tls-istiod
+#             port: 15012
+#             targetPort: 15012
+#           - name: tls-webhook
+#             port: 15017
+#             targetPort: 15017
+#   values:
+#     gateways:
+#       istio-ingressgateway:
+#         injectionTemplate: gateway
+#     global:
+#       network: ${CONTEXT}
+# EOF
 
-cat <<EOF | kubectl apply -f -
-apiVersion: networking.istio.io/v1alpha3
-kind: Gateway
-metadata:
-  name: cross-network-gateway
-spec:
-  selector:
-    istio: eastwestgateway
-  servers:
-  - port:
-      number: 15443
-      name: tls
-      protocol: TLS
-    tls:
-      mode: AUTO_PASSTHROUGH
-    hosts:
-    - "*.local"
-EOF
+# cat <<EOF | kubectl apply -f -
+# apiVersion: networking.istio.io/v1alpha3
+# kind: Gateway
+# metadata:
+#   name: cross-network-gateway
+# spec:
+#   selector:
+#     istio: eastwestgateway
+#   servers:
+#   - port:
+#       number: 15443
+#       name: tls
+#       protocol: TLS
+#     tls:
+#       mode: AUTO_PASSTHROUGH
+#     hosts:
+#     - "*.local"
+# EOF
