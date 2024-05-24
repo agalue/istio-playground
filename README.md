@@ -1,8 +1,6 @@
 # Istio Playground
 
-This is playground to have two [Kind](https://kind.sigs.k8s.io/) clusters backed by [Cilium](https://cilium.io/) as CNI (and allowing Load Balancer services to avoid MetalLB) connected with [Istio](https://istio.io/) using its [multi-cluster](https://istio.io/latest/docs/setup/install/multicluster/primary-remote_multi-network/) capabilities.
-
-The environment assumes we're interconnecting two clusters from different networks using Istio. As everything is laid out to have different CIDR for Pods and Services, it could be possible to connect the clusters using Cilium ClusterMesh and then use the multi-cluster feature of Istio on a shared or single network. Still, that last use case is not covered here.
+This is playground to have two [Kind](https://kind.sigs.k8s.io/) clusters backed by [Cilium](https://cilium.io/) as CNI (and allowing Load Balancer services to avoid MetalLB) connected with [Istio](https://istio.io/) using its [multi-cluster](https://istio.io/latest/docs/setup/install/multicluster/multi-primary/) capabilities. A flat network across the cluster is managed via Cilium [Cluster-Mesh](https://cilium.io/use-cases/cluster-mesh/).
 
 # Run
 
