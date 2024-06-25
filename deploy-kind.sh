@@ -15,7 +15,7 @@ SUBNET=${SUBNET-248} # Last octet from the /29 CIDR subnet to use for Cilium L2/
 CLUSTER_ID=${CLUSTER_ID-1}
 POD_CIDR=${POD_CIDR-10.244.0.0/16} # Must be under 10.0.0.0/8
 SVC_CIDR=${SVC_CIDR-10.96.0.0/12} # Must be under 10.0.0.0/8
-CILIUM_VERSION=${CILIUM_VERSION-1.15.5}
+CILIUM_VERSION=${CILIUM_VERSION-1.15.6}
 
 # Abort if the cluster exists; if so, ensure the kubeconfig is exported
 CLUSTERS=($(kind get clusters | tr '\n' ' '))
@@ -122,7 +122,7 @@ kubectl create secret generic cacerts -n istio-system \
   --from-file=certs/${CONTEXT}/root-cert.pem \
   --from-file=certs/${CONTEXT}/cert-chain.pem
 
-# https://istio.io/latest/docs/setup/install/multicluster/multi-primary_multi-network/
+# https://istio.io/latest/docs/setup/install/multicluster/multi-primary/
 # https://istio.io/latest/docs/reference/config/istio.operator.v1alpha1/
 # https://istio.io/v1.5/docs/reference/config/installation-options/
 cat <<EOF | istioctl install -y -f -
