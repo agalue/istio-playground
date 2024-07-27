@@ -52,10 +52,10 @@ networking:
   serviceSubnet: ${SVC_CIDR}
 EOF
 
-# Use Istio CA as Cilium CA
+# Use Istio Root CA as Cilium CA for ClusterMesh
 kubectl create secret generic cilium-ca -n kube-system \
-  --from-file=ca.crt=certs/${CONTEXT}/ca-cert.pem \
-  --from-file=ca.key=certs/${CONTEXT}/ca-key.pem
+  --from-file=ca.crt=certs/root-cert.pem \
+  --from-file=ca.key=certs/root-key.pem
 kubectl label secret -n kube-system cilium-ca app.kubernetes.io/managed-by=Helm
 kubectl annotate secret -n kube-system cilium-ca meta.helm.sh/release-name=cilium
 kubectl annotate secret -n kube-system cilium-ca meta.helm.sh/release-namespace=kube-system
