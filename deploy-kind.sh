@@ -13,9 +13,9 @@ CONTEXT=${CONTEXT-test} # Kubernetes Context Name (in Kind, it would be `kind-${
 WORKERS=${WORKERS-2} # Number of worker nodes in the clusters
 SUBNET=${SUBNET-248} # Last octet from the /29 CIDR subnet to use for Cilium L2/LB
 CLUSTER_ID=${CLUSTER_ID-1}
-POD_CIDR=${POD_CIDR-10.244.0.0/16}
-SVC_CIDR=${SVC_CIDR-10.96.0.0/12}
-CILIUM_VERSION=${CILIUM_VERSION-1.15.4}
+POD_CIDR=${POD_CIDR-10.244.0.0/16} # Must be under 10.0.0.0/8
+SVC_CIDR=${SVC_CIDR-10.96.0.0/12} # Must be under 10.0.0.0/8
+CILIUM_VERSION=${CILIUM_VERSION-1.16.0}
 
 # Abort if the cluster exists; if so, ensure the kubeconfig is exported
 CLUSTERS=($(kind get clusters | tr '\n' ' '))
@@ -51,6 +51,14 @@ networking:
   podSubnet: ${POD_CIDR}
   serviceSubnet: ${SVC_CIDR}
 EOF
+
+# Use Istio CA as Cilium CA
+kubectl create secret generic cilium-ca -n kube-system \
+  --from-file=ca.crt=certs/${CONTEXT}/ca-cert.pem \
+  --from-file=ca.key=certs/${CONTEXT}/ca-key.pem
+kubectl label secret -n kube-system cilium-ca app.kubernetes.io/managed-by=Helm
+kubectl annotate secret -n kube-system cilium-ca meta.helm.sh/release-name=cilium
+kubectl annotate secret -n kube-system cilium-ca meta.helm.sh/release-namespace=kube-system
 
 # https://docs.cilium.io/en/latest/network/servicemesh/istio/
 cilium install --version ${CILIUM_VERSION} --wait \
@@ -90,7 +98,7 @@ kind: CiliumLoadBalancerIPPool
 metadata:
   name: ${CONTEXT}-pool
 spec:
-  cidrs:
+  blocks:
   - cidr: "${CIDR}"
 ---
 apiVersion: cilium.io/v2alpha1
