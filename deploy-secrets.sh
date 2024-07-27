@@ -8,7 +8,7 @@ for cmd in "cilium" "istioctl" "kubectl" "jq"; do
 done
 
 for ctx in east west; do
-  cilium clustermesh enable --service-type LoadBalancer --context kind-${ctx}
+  cilium clustermesh enable --service-type LoadBalancer --enable-kvstoremesh=false --context kind-${ctx}
   cilium clustermesh status --wait --context kind-${ctx}
 done
 cilium clustermesh connect --context kind-east --destination-context kind-west
