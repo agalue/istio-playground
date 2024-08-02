@@ -63,6 +63,7 @@ kubectl annotate secret -n kube-system cilium-ca meta.helm.sh/release-namespace=
 # https://docs.cilium.io/en/latest/network/servicemesh/istio/
 cilium install --version ${CILIUM_VERSION} --wait \
   --set ipv4NativeRoutingCIDR=10.0.0.0/8 \
+  --set envoy.enabled=false \
   --set cluster.id=${CLUSTER_ID} \
   --set cluster.name=${CONTEXT} \
   --set ipam.mode=kubernetes \
@@ -123,6 +124,8 @@ helm upgrade --install metrics-server metrics-server/metrics-server \
 
 kubectl create namespace istio-system
 kubectl label namespace istio-system topology.istio.io/network=${CONTEXT}
+
+# https://istio.io/latest/docs/tasks/security/cert-management/plugin-ca-cert/
 kubectl create secret generic cacerts -n istio-system \
   --from-file=certs/${CONTEXT}/ca-cert.pem \
   --from-file=certs/${CONTEXT}/ca-key.pem \
@@ -143,15 +146,6 @@ spec:
         enabled: true
         clusterName: ${CONTEXT}
       network: ${CONTEXT}
-EOF
-
-cat <<EOF | istioctl install -y -f -
-apiVersion: install.istio.io/v1alpha1
-kind: IstioOperator
-metadata:
-  name: eastwest
-spec:
-  profile: empty
   components:
     ingressGateways:
     - name: istio-eastwestgateway
@@ -179,12 +173,6 @@ spec:
           - name: tls-webhook
             port: 15017
             targetPort: 15017
-  values:
-    gateways:
-      istio-ingressgateway:
-        injectionTemplate: gateway
-    global:
-      network: ${CONTEXT}
 EOF
 
 cat <<EOF | kubectl apply -f -
