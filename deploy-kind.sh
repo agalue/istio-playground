@@ -176,12 +176,14 @@ spec:
 EOF
 
 cat <<EOF | kubectl apply -f -
-apiVersion: networking.istio.io/v1alpha3
+apiVersion: networking.istio.io/v1
 kind: Gateway
 metadata:
   name: cross-network-gateway
+  namespace: istio-system
 spec:
   selector:
+    # Must match label from Ingress Gateway
     istio: eastwestgateway
   servers:
   - port:
