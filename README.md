@@ -22,13 +22,22 @@ The environment assumes we're interconnecting two clusters from different networ
 # Verify
 
 ```bash
-❯ istioctl remote-clusters --context kind-east
-NAME     SECRET                                    STATUS     ISTIOD
-west     istio-system/istio-remote-secret-west     synced     istiod-59844d9b-gdxcm
+for ctx in "kind-east" "kind-west"; do
+    echo "Context: $ctx"
+    istioctl remote-clusters --context $ctx
+done
+```
 
-❯ istioctl remote-clusters --context kind-west
+You should see:
+```
+Context: kind-east
 NAME     SECRET                                    STATUS     ISTIOD
-east     istio-system/istio-remote-secret-east     synced     istiod-7cc75fd4c8-zw6q4
+east                                               synced     istiod-69c5b7b798-98gvc
+west     istio-system/istio-remote-secret-west     synced     istiod-69c5b7b798-98gvc
+Context: kind-west
+NAME     SECRET                                    STATUS     ISTIOD
+west                                               synced     istiod-79f47f9676-4h9v4
+east     istio-system/istio-remote-secret-east     synced     istiod-79f47f9676-4h9v4
 ```
 
 Based on [this](https://istio.io/latest/docs/setup/install/multicluster/verify/), the following deploy the testing workload:
@@ -47,7 +56,6 @@ done
 ```
 
 You should see:
-
 ```bash
 Context: kind-east
 10.11.1.248:5000                                        HEALTHY     OK                outbound|5000||helloworld.sample.svc.cluster.local
@@ -77,7 +85,7 @@ NAME                    TYPE           CLUSTER-IP      EXTERNAL-IP       PORT(S)
 istio-eastwestgateway   LoadBalancer   10.22.249.140   192.168.228.242   15021:30742/TCP,15443:31607/TCP,15012:32301/TCP,15017:31203/TCP   2m59s
 ```
 
-To test connectivity, run the following:
+To test connectivity, run the following multiple times:
 
 ```bash
 kubectl exec --context="kind-east" -n sample -c sleep \
