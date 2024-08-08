@@ -11,16 +11,16 @@ EAST_SERVER=$(kubectl get node --context kind-east -l node-role.kubernetes.io/co
   | jq -r '.items[] | .status.addresses[] | select(.type=="InternalIP") | .address')
 
 istioctl create-remote-secret \
-  --context="kind-east" \
+  --context=kind-east \
   --server https://${EAST_SERVER}:6443 \
-  --name="east" | \
-  kubectl apply -f - --context="kind-west"
+  --name=east | \
+  kubectl apply -f - --context=kind-west
 
 WEST_SERVER=$(kubectl get node --context kind-west -l node-role.kubernetes.io/control-plane -o json \
   | jq -r '.items[] | .status.addresses[] | select(.type=="InternalIP") | .address')
 
 istioctl create-remote-secret \
-  --context="kind-west" \
+  --context=kind-west \
   --server https://${WEST_SERVER}:6443 \
-  --name="west" | \
-  kubectl apply -f - --context="kind-east"
+  --name=west | \
+  kubectl apply -f - --context=kind-east
