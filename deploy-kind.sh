@@ -123,7 +123,6 @@ helm upgrade --install metrics-server metrics-server/metrics-server \
  -n kube-system --set args={--kubelet-insecure-tls}
 
 kubectl create namespace istio-system
-kubectl label namespace istio-system topology.istio.io/network=cilium
 
 # https://istio.io/latest/docs/tasks/security/cert-management/plugin-ca-cert/
 kubectl create secret generic cacerts -n istio-system \
@@ -144,5 +143,5 @@ spec:
       meshID: mesh1
       multiCluster:
         clusterName: ${CONTEXT}
-      network: cilium
+      network: cilium # Optional
 EOF
