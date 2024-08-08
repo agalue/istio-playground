@@ -143,7 +143,6 @@ spec:
     global:
       meshID: mesh1
       multiCluster:
-        enabled: true
         clusterName: ${CONTEXT}
       network: cilium
 EOF

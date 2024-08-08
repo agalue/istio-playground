@@ -20,13 +20,22 @@ This is playground to have two [Kind](https://kind.sigs.k8s.io/) clusters backed
 # Verify
 
 ```bash
-❯ istioctl remote-clusters --context kind-east
-NAME     SECRET                                    STATUS     ISTIOD
-west     istio-system/istio-remote-secret-west     synced     istiod-59844d9b-gdxcm
+for ctx in "kind-east" "kind-west"; do
+    echo "Context: $ctx"
+    istioctl remote-clusters --context $ctx
+done
+```
 
-❯ istioctl remote-clusters --context kind-west
+You should see:
+```
+Context: kind-east
 NAME     SECRET                                    STATUS     ISTIOD
-east     istio-system/istio-remote-secret-east     synced     istiod-7cc75fd4c8-zw6q4
+east                                               synced     istiod-69c5b7b798-98gvc
+west     istio-system/istio-remote-secret-west     synced     istiod-69c5b7b798-98gvc
+Context: kind-west
+NAME     SECRET                                    STATUS     ISTIOD
+west                                               synced     istiod-79f47f9676-4h9v4
+east     istio-system/istio-remote-secret-east     synced     istiod-79f47f9676-4h9v4
 ```
 
 Based on [this](https://istio.io/latest/docs/setup/install/multicluster/verify/), the following deploy the testing workload:
@@ -45,7 +54,6 @@ done
 ```
 
 You should see:
-
 ```bash
 Context: kind-east
 10.11.1.206:5000                                        HEALTHY     OK                outbound|5000||helloworld.sample.svc.cluster.local
@@ -57,7 +65,7 @@ Context: kind-west
 
 Note that the IP addresses are coming from both clusters.
 
-To test connectivity, run the following:
+To test connectivity, run the following multiple times:
 
 ```bash
 kubectl exec --context="kind-east" -n sample -c sleep \
