@@ -4,6 +4,17 @@ This is playground to have two [Kind](https://kind.sigs.k8s.io/) clusters backed
 
 The environment assumes we're interconnecting two clusters from different networks using Istio. As everything is laid out to have different CIDR for Pods and Services, it could be possible to connect the clusters using Cilium ClusterMesh and then use the multi-cluster feature of Istio on a shared or single network. Still, that last use case is not covered here.
 
+# Requirements
+
+* [Docker](http://docker.io/)
+* [Kind](https://kind.sigs.k8s.io/docs/user/quick-start/)
+* [Kubectl](https://kubernetes.io/docs/tasks/tools/)
+* [Helm](https://helm.sh/docs/intro/install/)
+* [Step CLI](https://smallstep.com/docs/step-cli/installation/)
+* [Istio CLI](https://istio.io/latest/docs/setup/install/istioctl/)
+* [Cilium CLI](https://docs.cilium.io/en/stable/gettingstarted/k8s-install-default/)
+* [JQ](https://jqlang.github.io/jq/download/)
+
 # Run
 
 > This is a work in progress
