@@ -2,6 +2,17 @@
 
 This is playground to have two [Kind](https://kind.sigs.k8s.io/) clusters backed by [Cilium](https://cilium.io/) as CNI (and allowing Load Balancer services to avoid MetalLB) connected with [Istio](https://istio.io/) using its [multi-cluster](https://istio.io/latest/docs/setup/install/multicluster/multi-primary/) capabilities. A flat network across the cluster is managed via Cilium [Cluster-Mesh](https://cilium.io/use-cases/cluster-mesh/).
 
+# Requirements
+
+* [Docker](http://docker.io/)
+* [Kind](https://kind.sigs.k8s.io/docs/user/quick-start/)
+* [Kubectl](https://kubernetes.io/docs/tasks/tools/)
+* [Helm](https://helm.sh/docs/intro/install/)
+* [Step CLI](https://smallstep.com/docs/step-cli/installation/)
+* [Istio CLI](https://istio.io/latest/docs/setup/install/istioctl/)
+* [Cilium CLI](https://docs.cilium.io/en/stable/gettingstarted/k8s-install-default/)
+* [JQ](https://jqlang.github.io/jq/download/)
+
 # Run
 
 > This is a work in progress
