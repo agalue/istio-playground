@@ -13,9 +13,9 @@ CONTEXT=${CONTEXT-test} # Kubernetes Context Name (in Kind, it would be `kind-${
 WORKERS=${WORKERS-2} # Number of worker nodes in the clusters
 SUBNET=${SUBNET-248} # Last octet from the /29 CIDR subnet to use for Cilium L2/LB
 CLUSTER_ID=${CLUSTER_ID-1}
-POD_CIDR=${POD_CIDR-10.244.0.0/16} # Must be under 10.0.0.0/8
-SVC_CIDR=${SVC_CIDR-10.96.0.0/12} # Must be under 10.0.0.0/8
-CILIUM_VERSION=${CILIUM_VERSION-1.16.0}
+POD_CIDR=${POD_CIDR-10.244.0.0/16} # Must be under 10.0.0.0/8 for Cilium ipv4NativeRoutingCIDR
+SVC_CIDR=${SVC_CIDR-10.96.0.0/16} # Node that Kind Docker Network is 172.18.0.0/16 by default (worker nodes)
+CILIUM_VERSION=${CILIUM_VERSION-1.16.3}
 
 # Abort if the cluster exists; if so, ensure the kubeconfig is exported
 CLUSTERS=($(kind get clusters | tr '\n' ' '))
@@ -134,14 +134,37 @@ kubectl create secret generic cacerts -n istio-system \
 # https://istio.io/latest/docs/setup/install/multicluster/multi-primary/
 # https://istio.io/latest/docs/reference/config/istio.operator.v1alpha1/
 # https://istio.io/v1.5/docs/reference/config/installation-options/
-cat <<EOF | istioctl install -y -f -
+cat <<EOF > ${CONTEXT}-istio-operator.yaml
 apiVersion: install.istio.io/v1alpha1
 kind: IstioOperator
 spec:
+  meshConfig:
+    accessLogFile: /dev/stdout
+    defaultConfig:
+      holdApplicationUntilProxyStarts: true
+      proxyMetadata:
+        ISTIO_META_DNS_CAPTURE: "true"
+        ISTIO_META_DNS_AUTO_ALLOCATE: "true"
   values:
     global:
       meshID: mesh1
       multiCluster:
         clusterName: ${CONTEXT}
       network: cilium # Optional
+      proxy:
+        resources:
+          limits:
+            cpu: '0'
+            memory: '0'
+          requests:
+            cpu: '0'
+            memory: '0'
+      proxy_init:
+        resources:
+          limits:
+            cpu: '0'
+            memory: '0'
+          requests:
+            cpu: '0'
+            memory: '0'
 EOF
