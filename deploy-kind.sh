@@ -15,7 +15,6 @@ SUBNET=${SUBNET-248} # Last octet from the /29 CIDR subnet to use for Cilium L2/
 CLUSTER_ID=${CLUSTER_ID-1}
 POD_CIDR=${POD_CIDR-10.244.0.0/16} # Must be under 10.0.0.0/8 for Cilium ipv4NativeRoutingCIDR
 SVC_CIDR=${SVC_CIDR-10.96.0.0/16} # Node that Kind Docker Network is 172.18.0.0/16 by default (worker nodes)
-CILIUM_VERSION=${CILIUM_VERSION-1.16.3}
 
 # Abort if the cluster exists; if so, ensure the kubeconfig is exported
 CLUSTERS=($(kind get clusters | tr '\n' ' '))
@@ -61,7 +60,7 @@ kubectl annotate secret -n kube-system cilium-ca meta.helm.sh/release-name=ciliu
 kubectl annotate secret -n kube-system cilium-ca meta.helm.sh/release-namespace=kube-system
 
 # https://docs.cilium.io/en/latest/network/servicemesh/istio/
-cilium install --version ${CILIUM_VERSION} --wait \
+cilium install --wait \
   --set ipv4NativeRoutingCIDR=10.0.0.0/8 \
   --set envoy.enabled=false \
   --set cluster.id=${CLUSTER_ID} \
