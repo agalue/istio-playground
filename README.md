@@ -17,6 +17,8 @@ This is playground to have two [Kind](https://kind.sigs.k8s.io/) clusters backed
 
 > This is a work in progress
 
+The following deploys a traditional Istio with proxies (in other words, it assumes `ISTIO_PROFILE=default`):
+
 ```bash
 # Create the root and intermediate CAs for the backplane
 ./deploy-certs.sh
@@ -26,6 +28,11 @@ This is playground to have two [Kind](https://kind.sigs.k8s.io/) clusters backed
 ./deploy-west.sh
 # Update the remote secrets to interconnect the clusters
 ./deploy-secrets.sh
+```
+
+If you want to use ambient mode, run the following *before* the above commands:
+```bash
+export ISTIO_PROFILE=ambient
 ```
 
 # Verify
@@ -49,13 +56,15 @@ west                                               synced     istiod-79f47f9676-
 east     istio-system/istio-remote-secret-east     synced     istiod-79f47f9676-4h9v4
 ```
 
+> *Warning*: As of version 1.25.0, the ambient mode doesn't officially support multi-cluster, so you won't see `synced`, but the solution works.
+
 Based on [this](https://istio.io/latest/docs/setup/install/multicluster/verify/), the following deploy the testing workload:
 
 ```bash
 ./deploy-test.sh
 ```
 
-After a few seconds:
+After a few seconds, if you're using the traditional deployment via Istio-Proxy (Envoy), execute the following to see the endpoints:
 ```bash
 for ctx in "kind-east" "kind-west"; do
     echo "Context: $ctx"
@@ -72,6 +81,59 @@ Context: kind-east
 Context: kind-west
 10.11.1.206:5000                                        HEALTHY     OK                outbound|5000||helloworld.sample.svc.cluster.local
 10.21.1.185:5000                                        HEALTHY     OK                outbound|5000||helloworld.sample.svc.cluster.local
+```
+
+If you're using Ambient mode, run the following instead:
+```bash
+❯ istioctl zc workload --workload-namespace sample
+NAMESPACE POD NAME                       ADDRESS     NODE        WAYPOINT PROTOCOL
+sample    helloworld-v1-5787f49bd8-d5slw 10.11.1.243 east-worker None     HBONE
+sample    helloworld-v2-6746879bdd-nw8jn 10.12.1.154 west-worker None     HBONE
+sample    sleep-868c754c4b-cmnsz         10.12.1.41  west-worker None     HBONE
+sample    sleep-868c754c4b-jzzqz         10.11.1.181 east-worker None     HBONE
+```
+
+Note that we see endpoints from the worker nodes on different clusters. For more details:
+```bash
+❯ istioctl zc service --service-namespace=sample -o yaml
+- endpoints:
+    east//Pod/sample/helloworld-v1-5787f49bd8-d5slw:
+      port:
+        "5000": 5000
+      service: ""
+      workloadUid: east//Pod/sample/helloworld-v1-5787f49bd8-d5slw
+    west//Pod/sample/helloworld-v2-6746879bdd-nw8jn:
+      port:
+        "5000": 5000
+      service: ""
+      workloadUid: west//Pod/sample/helloworld-v2-6746879bdd-nw8jn
+  hostname: helloworld.sample.svc.cluster.local
+  ipFamilies: IPv4
+  name: helloworld
+  namespace: sample
+  ports:
+    "5000": 5000
+  vips:
+  - /172.21.97.76
+- endpoints:
+    east//Pod/sample/sleep-868c754c4b-jzzqz:
+      port:
+        "80": 80
+      service: ""
+      workloadUid: east//Pod/sample/sleep-868c754c4b-jzzqz
+    west//Pod/sample/sleep-868c754c4b-cmnsz:
+      port:
+        "80": 80
+      service: ""
+      workloadUid: west//Pod/sample/sleep-868c754c4b-cmnsz
+  hostname: sleep.sample.svc.cluster.local
+  ipFamilies: IPv4
+  name: sleep
+  namespace: sample
+  ports:
+    "80": 80
+  vips:
+  - /172.21.178.227
 ```
 
 Note that the IP addresses are coming from both clusters.
