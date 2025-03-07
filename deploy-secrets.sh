@@ -33,3 +33,11 @@ istioctl create-remote-secret \
   --server https://${WEST_SERVER}:6443 \
   --name=west | \
   kubectl apply -f - --context=kind-east
+
+# Patch to allow single-network multi-cluster works in ambient mode
+if kubectl get daemonset -n istio-system ztunnel >/dev/null 2>&1; then
+  for ctx in "kind-east" "kind-west"; do
+    kubectl --context=$ctx patch ClusterRole/istio-reader-clusterrole-istio-system --type=json \
+      -p='[{"op": "add", "path": "/rules/0", "value":{ "apiGroups": [""], "resources": ["configmaps"], "verbs": ["watch","get","list"]}}]'
+  done
+fi

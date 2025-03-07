@@ -14,7 +14,8 @@ WORKERS=${WORKERS-2} # Number of worker nodes in the clusters
 SUBNET=${SUBNET-248} # Last octet from the /29 CIDR subnet to use for Cilium L2/LB
 CLUSTER_ID=${CLUSTER_ID-1}
 POD_CIDR=${POD_CIDR-10.244.0.0/16} # Must be under 10.0.0.0/8 for Cilium ipv4NativeRoutingCIDR
-SVC_CIDR=${SVC_CIDR-10.96.0.0/16} # Node that Kind Docker Network is 172.18.0.0/16 by default (worker nodes)
+SVC_CIDR=${SVC_CIDR-10.96.0.0/16} # Must differ from Kind's Docker Network (172.18.0.0/16 by default)
+ISTIO_PROFILE=${ISTIO_PROFILE-default}
 
 # Abort if the cluster exists; if so, ensure the kubeconfig is exported
 CLUSTERS=($(kind get clusters | tr '\n' ' '))
@@ -137,13 +138,11 @@ cat <<EOF > ${CONTEXT}-istio-operator.yaml
 apiVersion: install.istio.io/v1alpha1
 kind: IstioOperator
 spec:
+  profile: ${ISTIO_PROFILE}
   meshConfig:
     accessLogFile: /dev/stdout
     defaultConfig:
       holdApplicationUntilProxyStarts: true
-      proxyMetadata:
-        ISTIO_META_DNS_CAPTURE: "true"
-        ISTIO_META_DNS_AUTO_ALLOCATE: "true"
   values:
     global:
       meshID: mesh1
@@ -167,3 +166,7 @@ spec:
             cpu: '0'
             memory: '0'
 EOF
+istioctl install -y -f ${CONTEXT}-istio-operator.yaml
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.25/samples/addons/prometheus.yaml
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.25/samples/addons/kiali.yaml
