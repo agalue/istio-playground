@@ -145,9 +145,6 @@ spec:
     accessLogFile: /dev/stdout
     defaultConfig:
       holdApplicationUntilProxyStarts: true
-      proxyMetadata:
-        ISTIO_META_DNS_CAPTURE: "true"
-        ISTIO_META_DNS_AUTO_ALLOCATE: "true"
   values:
     global:
       meshID: mesh1
