@@ -135,6 +135,7 @@ kubectl create secret generic cacerts -n istio-system \
   --from-file=certs/${CONTEXT}/cert-chain.pem
 
 # https://istio.io/latest/docs/setup/install/multicluster/multi-primary_multi-network/
+# https://github.com/istio/istio/blob/master/samples/multicluster/gen-eastwest-gateway.sh
 # https://istio.io/latest/docs/reference/config/istio.operator.v1alpha1/
 # https://istio.io/v1.5/docs/reference/config/installation-options/
 cat <<EOF > ${CONTEXT}-istio-operator.yaml
@@ -201,17 +202,6 @@ spec:
           - name: tls-webhook
             port: 15017
             targetPort: 15017
-    egressGateways:
-    - name: istio-egressgateway
-      enabled: true
-      k8s:
-        resources:
-          limits:
-            cpu: '0'
-            memory: '0'
-          requests:
-            cpu: '0'
-            memory: '0'
 EOF
 istioctl install -y -f ${CONTEXT}-istio-operator.yaml
 
