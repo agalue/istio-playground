@@ -138,10 +138,10 @@ kubectl create secret generic cacerts -n istio-system \
   --from-file=certs/${CONTEXT}/root-cert.pem \
   --from-file=certs/${CONTEXT}/cert-chain.pem
 
-# https://istio.io/latest/docs/setup/install/multicluster/multi-primary_multi-network/
-# https://github.com/istio/istio/blob/master/samples/multicluster/gen-eastwest-gateway.sh
 # https://istio.io/latest/docs/reference/config/istio.operator.v1alpha1/
 if [[ "${ISTIO_PROFILE}" == "ambient" ]]; then
+  # https://istio.io/latest/docs/setup/install/multicluster/multi-primary_multi-network/
+  # https://github.com/istio/istio/blob/master/samples/multicluster/gen-eastwest-gateway.sh
   cat <<EOF | istioctl install -y -f -
 apiVersion: install.istio.io/v1alpha1
 kind: IstioOperator
@@ -184,6 +184,8 @@ spec:
 EOF
 
 else
+  # https://istio.io/latest/docs/ambient/install/multicluster/multi-primary_multi-network/
+  # https://istio.io/latest/docs/ambient/install/multicluster/verify/
   cat <<EOF | istioctl install -y -f -
 apiVersion: install.istio.io/v1alpha1
 kind: IstioOperator
