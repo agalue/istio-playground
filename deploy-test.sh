@@ -9,16 +9,26 @@ for cmd in "kubectl"; do
   type $cmd >/dev/null 2>&1 || { echo >&2 "$cmd required but it's not installed; aborting."; exit 1; }
 done
 
+ISTIO_PROFILE=${ISTIO_PROFILE-default}
+
 for ctx in "kind-east" "kind-west"; do
   kubectl create namespace sample \
     --dry-run=client -o yaml | kubectl apply --context=$ctx -f -
 
-  kubectl label --context=$ctx namespace sample \
-    istio-injection=enabled --overwrite
+  # Add support for Proxy and Ambient mode
+  if [[ "${ISTIO_PROFILE}" == "ambient" ]]; then
+    kubectl label --context=$ctx namespace sample --overwrite istio.io/dataplane-mode=ambient
+  else
+    kubectl label --context=$ctx namespace sample --overwrite istio-injection=enabled
+  fi
 
   kubectl apply --context=$ctx \
     -f https://raw.githubusercontent.com/istio/istio/master/samples/helloworld/helloworld.yaml \
     -l service=helloworld -n sample
+
+  if [[ "${ISTIO_PROFILE}" == "ambient" ]]; then
+    kubectl label --context=$ctx svc helloworld -n sample istio.io/global="true"
+  fi
 done
 
 kubectl apply --context=kind-east \

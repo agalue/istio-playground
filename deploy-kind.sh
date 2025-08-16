@@ -15,6 +15,7 @@ SUBNET=${SUBNET-248} # Last octet from the /29 CIDR subnet to use for Cilium L2/
 CLUSTER_ID=${CLUSTER_ID-1}
 POD_CIDR=${POD_CIDR-10.244.0.0/16} # Must be under 10.0.0.0/8 for Cilium ipv4NativeRoutingCIDR
 SVC_CIDR=${SVC_CIDR-10.96.0.0/16} # Must differ from Kind's Docker Network
+ISTIO_PROFILE=${ISTIO_PROFILE-default}
 
 # Abort if the cluster exists; if so, ensure the kubeconfig is exported
 CLUSTERS=($(kind get clusters | tr '\n' ' '))
@@ -120,9 +121,12 @@ spec:
 EOF
 
 helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
-helm repo update
+helm repo update &> /dev/null
 helm upgrade --install metrics-server metrics-server/metrics-server \
  -n kube-system --set args={--kubelet-insecure-tls}
+
+kubectl get crd gateways.gateway.networking.k8s.io &> /dev/null || \
+  kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml
 
 kubectl create namespace istio-system
 kubectl label namespace istio-system topology.istio.io/network=${CONTEXT}
@@ -137,8 +141,50 @@ kubectl create secret generic cacerts -n istio-system \
 # https://istio.io/latest/docs/setup/install/multicluster/multi-primary_multi-network/
 # https://github.com/istio/istio/blob/master/samples/multicluster/gen-eastwest-gateway.sh
 # https://istio.io/latest/docs/reference/config/istio.operator.v1alpha1/
-# https://istio.io/v1.5/docs/reference/config/installation-options/
-cat <<EOF > ${CONTEXT}-istio-operator.yaml
+if [[ "${ISTIO_PROFILE}" == "ambient" ]]; then
+  cat <<EOF | istioctl install -y -f -
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  profile: ambient
+  meshConfig:
+    accessLogFile: /dev/stdout
+  components:
+    pilot:
+      k8s:
+        env:
+        - name: AMBIENT_ENABLE_MULTI_NETWORK
+          value: "true"
+  values:
+    global:
+      meshID: mesh1
+      multiCluster:
+        clusterName: ${CONTEXT}
+      network: ${CONTEXT}
+EOF
+
+  cat <<EOF | kubectl apply -f -
+kind: Gateway
+apiVersion: gateway.networking.k8s.io/v1
+metadata:
+  name: istio-eastwestgateway
+  namespace: istio-system
+  labels:
+    topology.istio.io/network: ${CONTEXT}
+spec:
+  gatewayClassName: istio-east-west
+  listeners:
+  - name: mesh
+    port: 15008
+    protocol: HBONE
+    tls:
+      mode: Terminate # represents double-HBONE
+      options:
+        gateway.istio.io/tls-terminate-mode: ISTIO_MUTUAL
+EOF
+
+else
+  cat <<EOF | istioctl install -y -f -
 apiVersion: install.istio.io/v1alpha1
 kind: IstioOperator
 spec:
@@ -203,9 +249,8 @@ spec:
             port: 15017
             targetPort: 15017
 EOF
-istioctl install -y -f ${CONTEXT}-istio-operator.yaml
 
-cat <<EOF | kubectl apply -f -
+  cat <<EOF | kubectl apply -f -
 apiVersion: networking.istio.io/v1
 kind: Gateway
 metadata:
@@ -225,3 +270,4 @@ spec:
     hosts:
     - "*.local"
 EOF
+fi
