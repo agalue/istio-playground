@@ -19,6 +19,8 @@ The environment assumes we're interconnecting two clusters from different networ
 
 > This is a work in progress
 
+The following deploys a traditional Istio with proxies (in other words, it assumes `ISTIO_PROFILE=default`):
+
 ```bash
 # Create the root and intermediate CAs for the backplane
 ./deploy-certs.sh
@@ -28,6 +30,11 @@ The environment assumes we're interconnecting two clusters from different networ
 ./deploy-west.sh
 # Update the remote secrets to interconnect the clusters
 ./deploy-secrets.sh
+```
+
+If you want to use ambient mode, run the following *before* the above commands:
+```bash
+export ISTIO_PROFILE=ambient
 ```
 
 # Verify
@@ -57,7 +64,7 @@ Based on [this](https://istio.io/latest/docs/setup/install/multicluster/verify/)
 ./deploy-test.sh
 ```
 
-After a few seconds:
+For the proxy-based solution, execute the following after a few seconds:
 ```bash
 for ctx in "kind-east" "kind-west"; do
     echo "Context: $ctx"
@@ -94,6 +101,56 @@ istio-eastwestgateway   LoadBalancer   10.12.7.171   192.168.228.250   15021:318
 Context: kind-west
 NAME                    TYPE           CLUSTER-IP      EXTERNAL-IP       PORT(S)                                                           AGE
 istio-eastwestgateway   LoadBalancer   10.22.249.140   192.168.228.242   15021:30742/TCP,15443:31607/TCP,15012:32301/TCP,15017:31203/TCP   2m59s
+```
+
+If you're using Ambient mode, run the following instead:
+```bash
+❯ istioctl zc workload --workload-namespace sample
+NAMESPACE POD NAME                                                                                                               ADDRESS     NODE        WAYPOINT PROTOCOL
+sample    east/SplitHorizonWorkload/istio-system/istio-eastwestgateway/192.168.97.248/sample/helloworld.sample.svc.cluster.local                         None     HBONE
+sample    helloworld-v2-6746879bdd-jmwtw                                                                                         10.12.1.173 west-worker None     HBONE
+sample    sleep-868c754c4b-22w5t                                                                                                 10.12.1.249 west-worker None     HBONE
+```
+
+For more details:
+```bash
+❯ istioctl zc service --service-namespace=sample -o yaml
+- endpoints:
+    east/SplitHorizonWorkload/istio-system/istio-eastwestgateway/192.168.97.248/sample/helloworld.sample.svc.cluster.local:
+      port:
+        "5000": 5000
+      service: ""
+      workloadUid: east/SplitHorizonWorkload/istio-system/istio-eastwestgateway/192.168.97.248/sample/helloworld.sample.svc.cluster.local
+    west//Pod/sample/helloworld-v2-6746879bdd-jmwtw:
+      port:
+        "5000": 5000
+      service: ""
+      workloadUid: west//Pod/sample/helloworld-v2-6746879bdd-jmwtw
+  hostname: helloworld.sample.svc.cluster.local
+  ipFamilies: IPv4
+  name: helloworld
+  namespace: sample
+  ports:
+    "5000": 5000
+  subjectAltNames:
+  - spiffe://cluster.local/ns/sample/sa/default
+  vips:
+  - east/172.21.230.204
+  - west/172.22.46.175
+- endpoints:
+    west//Pod/sample/sleep-868c754c4b-22w5t:
+      port:
+        "80": 80
+      service: ""
+      workloadUid: west//Pod/sample/sleep-868c754c4b-22w5t
+  hostname: sleep.sample.svc.cluster.local
+  ipFamilies: IPv4
+  name: sleep
+  namespace: sample
+  ports:
+    "80": 80
+  vips:
+  - west/172.22.159.217
 ```
 
 To test connectivity, run the following multiple times:
