@@ -19,7 +19,15 @@ The environment assumes we're interconnecting two clusters from different networ
 
 > This is a work in progress
 
-The following deploys a traditional Istio with proxies (in other words, it assumes `ISTIO_PROFILE=default`):
+The following deploys a traditional Istio with proxies (in other words, it assumes `ISTIO_PROFILE=default`). 
+
+However, if you want to use ambient mode, run the following *before* the above commands:
+```bash
+export ISTIO_PROFILE=ambient
+export CILIUM_ENABLED=false
+```
+
+> DNS doesn't work well when having Cilium and Istio in Ambient mode. Disabling Cilium uses default Kind CNI and MetalLB for LoadBalancers.
 
 ```bash
 # Create the root and intermediate CAs for the backplane
@@ -30,11 +38,6 @@ The following deploys a traditional Istio with proxies (in other words, it assum
 ./deploy-west.sh
 # Update the remote secrets to interconnect the clusters
 ./deploy-secrets.sh
-```
-
-If you want to use ambient mode, run the following *before* the above commands:
-```bash
-export ISTIO_PROFILE=ambient
 ```
 
 # Verify
