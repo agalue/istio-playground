@@ -1,6 +1,11 @@
 #!/bin/bash
 #
 # Source: https://github.com/agalue/LGTM-PoC/blob/main/deploy-kind.sh
+# Modified to support both Cilium and MetalLB configurations for Istio multi-cluster setups
+# Use CILIUM_ENABLED=false for MetalLB (better for Istio ambient mode multi-cluster)
+#
+# IMPORTANT: Confirmed that Cilium conflicts with Istio 1.27.0 in ambient mode causing DNS issues
+# in multi-cluster setups. MetalLB resolves these DNS resolution problems between clusters.
 
 set -euo pipefail
 trap 's=$?; echo >&2 "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
@@ -11,11 +16,12 @@ done
 
 CONTEXT=${CONTEXT-test} # Kubernetes Context Name (in Kind, it would be `kind-${CONTEXT}`)
 WORKERS=${WORKERS-2} # Number of worker nodes in the clusters
-SUBNET=${SUBNET-248} # Last octet from the /29 CIDR subnet to use for Cilium L2/LB
+SUBNET=${SUBNET-248} # Last octet from the /29 CIDR subnet to use for LoadBalancer IPs
 CLUSTER_ID=${CLUSTER_ID-1}
-POD_CIDR=${POD_CIDR-10.244.0.0/16} # Must be under 10.0.0.0/8 for Cilium ipv4NativeRoutingCIDR
+POD_CIDR=${POD_CIDR-10.244.0.0/16} # Pod subnet for the cluster (when using Cilium, it must be under 10.0.0.0/8 for ipv4NativeRoutingCIDR)
 SVC_CIDR=${SVC_CIDR-10.96.0.0/16} # Must differ from Kind's Docker Network
 ISTIO_PROFILE=${ISTIO_PROFILE-default}
+CILIUM_ENABLED=${CILIUM_ENABLED-true} # Set to true to use Cilium as CNI or false to use default CNI plus MetalLB
 
 # Abort if the cluster exists; if so, ensure the kubeconfig is exported
 CLUSTERS=($(kind get clusters | tr '\n' ' '))
@@ -36,7 +42,13 @@ EOF
 )$'\n'
 done
 
-# Deploy Kind Cluster
+# Deploy Kind Cluster with configuration based on CNI choice
+NETWORKING_CONFIG="ipFamily: ipv4"
+if [[ "${CILIUM_ENABLED}" == "true" ]]; then
+  # Cilium configuration: disable default CNI and kube-proxy
+  NETWORKING_CONFIG+=$'\n  disableDefaultCNI: true\n  kubeProxyMode: none'
+fi
+
 cat <<EOF | kind create cluster --config -
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
@@ -45,57 +57,63 @@ nodes:
 - role: control-plane
 ${WORKER_YAML}
 networking:
-  ipFamily: ipv4
-  disableDefaultCNI: true
-  kubeProxyMode: none
+  ${NETWORKING_CONFIG}
   podSubnet: ${POD_CIDR}
   serviceSubnet: ${SVC_CIDR}
 EOF
 
-# Use Istio Root CA as Cilium CA for ClusterMesh
-kubectl create secret generic cilium-ca -n kube-system \
-  --from-file=ca.crt=certs/root-cert.pem \
-  --from-file=ca.key=certs/root-key.pem
-kubectl label secret -n kube-system cilium-ca app.kubernetes.io/managed-by=Helm
-kubectl annotate secret -n kube-system cilium-ca meta.helm.sh/release-name=cilium
-kubectl annotate secret -n kube-system cilium-ca meta.helm.sh/release-namespace=kube-system
+# Wait for the cluster to be ready
+kubectl wait --for=condition=Ready nodes --all --timeout=300s
 
-# https://docs.cilium.io/en/latest/network/servicemesh/istio/
-cilium install --wait \
-  --set ipv4NativeRoutingCIDR=10.0.0.0/8 \
-  --set routingMode=native \
-  --set autoDirectNodeRoutes=true \
-  --set bpf.masquerade=false \
-  --set envoy.enabled=false \
-  --set cluster.id=${CLUSTER_ID} \
-  --set cluster.name=${CONTEXT} \
-  --set ipam.mode=kubernetes \
-  --set devices=eth+ \
-  --set l2announcements.enabled=true \
-  --set externalIPs.enabled=true \
-  --set socketLB.enabled=true \
-  --set socketLB.hostNamespaceOnly=true \
-  --set cni.exclusive=false \
-  --set k8sClientRateLimit.qps=50 \
-  --set k8sClientRateLimit.burst=100
+# Install CNI and LoadBalancer based on configuration
+if [[ "${CILIUM_ENABLED}" == "true" ]]; then
+  echo "Installing Cilium CNI..."
 
-cilium status --wait --ignore-warnings
+  # Use Istio Root CA as Cilium CA for ClusterMesh
+  kubectl create secret generic cilium-ca -n kube-system \
+    --from-file=ca.crt=certs/root-cert.pem \
+    --from-file=ca.key=certs/root-key.pem
+  kubectl label secret -n kube-system cilium-ca app.kubernetes.io/managed-by=Helm
+  kubectl annotate secret -n kube-system cilium-ca meta.helm.sh/release-name=cilium
+  kubectl annotate secret -n kube-system cilium-ca meta.helm.sh/release-namespace=kube-system
 
-NETWORK=$(docker network inspect kind \
-  | jq -r '.[0].IPAM.Config[] | select(.Gateway != null) | .Subnet' | grep -v ':')
-CIDR=""
-if [[ "$NETWORK" == *"/16" ]]; then
-  CIDR="${NETWORK%.*.*}.255.${SUBNET}/29"
-fi
-if [[ "$NETWORK" == *"/24" ]]; then
-  CIDR="${NETWORK%.*}.${SUBNET}/29"
-fi
-if [[ "$CIDR" == "" ]]; then
-  echo "cannot extract LB CIDR from network $NETWORK"
-  exit 1
-fi
+  # https://docs.cilium.io/en/latest/network/servicemesh/istio/
+  cilium install --wait \
+    --set ipv4NativeRoutingCIDR=10.0.0.0/8 \
+    --set routingMode=native \
+    --set autoDirectNodeRoutes=true \
+    --set bpf.masquerade=false \
+    --set envoy.enabled=false \
+    --set cluster.id=${CLUSTER_ID} \
+    --set cluster.name=${CONTEXT} \
+    --set ipam.mode=kubernetes \
+    --set devices=eth+ \
+    --set l2announcements.enabled=true \
+    --set externalIPs.enabled=true \
+    --set socketLB.enabled=true \
+    --set socketLB.hostNamespaceOnly=true \
+    --set cni.exclusive=false \
+    --set k8sClientRateLimit.qps=50 \
+    --set k8sClientRateLimit.burst=100
 
-cat <<EOF | kubectl apply -f -
+  cilium status --wait --ignore-warnings
+
+  # Configure Cilium LoadBalancer
+  NETWORK=$(docker network inspect kind \
+    | jq -r '.[0].IPAM.Config[] | select(.Gateway != null) | .Subnet' | grep -v ':')
+  CIDR=""
+  if [[ "$NETWORK" == *"/16" ]]; then
+    CIDR="${NETWORK%.*.*}.255.${SUBNET}/29"
+  fi
+  if [[ "$NETWORK" == *"/24" ]]; then
+    CIDR="${NETWORK%.*}.${SUBNET}/29"
+  fi
+  if [[ "$CIDR" == "" ]]; then
+    echo "cannot extract LB CIDR from network $NETWORK"
+    exit 1
+  fi
+
+  cat <<EOF | kubectl apply -f -
 ---
 apiVersion: cilium.io/v2alpha1
 kind: CiliumLoadBalancerIPPool
@@ -119,6 +137,51 @@ spec:
   externalIPs: true
   loadBalancerIPs: true
 EOF
+
+else
+  echo "Installing MetalLB LoadBalancer..."
+
+  # Install MetalLB for LoadBalancer support
+  kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.12/config/manifests/metallb-native.yaml
+  kubectl wait --namespace metallb-system --for=condition=ready pod --selector=app=metallb --timeout=90s
+
+  # Configure MetalLB LoadBalancer
+  NETWORK=$(docker network inspect kind \
+    | jq -r '.[0].IPAM.Config[] | select(.Gateway != null) | .Subnet' | grep -v ':')
+  CIDR=""
+  if [[ "$NETWORK" == *"/16" ]]; then
+    CIDR="${NETWORK%.*.*}.255.${SUBNET}/29"
+  fi
+  if [[ "$NETWORK" == *"/24" ]]; then
+    CIDR="${NETWORK%.*}.${SUBNET}/29"
+  fi
+  if [[ "$CIDR" == "" ]]; then
+    echo "cannot extract LB CIDR from network $NETWORK"
+    exit 1
+  fi
+
+  cat <<EOF | kubectl apply -f -
+---
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: ${CONTEXT}-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - ${CIDR}
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: ${CONTEXT}-l2advertisement
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - ${CONTEXT}-pool
+EOF
+
+fi
 
 helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
 helm repo update &> /dev/null
