@@ -31,6 +31,10 @@ if [[ ${#CLUSTERS[@]} > 0 ]] && [[ " ${CLUSTERS[@]} " =~ " ${CONTEXT} " ]]; then
   return
 fi
 
+helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+helm repo add metallb https://metallb.github.io/metallb
+helm repo update &> /dev/null
+
 WORKER_YAML=""
 for ((i = 1; i <= WORKERS; i++)); do
   WORKER_YAML+=$(cat <<EOF
@@ -64,6 +68,21 @@ EOF
 
 # Wait for the cluster to be ready
 kubectl wait --for=condition=Ready nodes --all --timeout=300s
+
+# Calculate LoadBalancer CIDR (common for both Cilium and MetalLB)
+NETWORK=$(docker network inspect kind \
+  | jq -r '.[0].IPAM.Config[] | select(.Gateway != null) | .Subnet' | grep -v ':')
+CIDR=""
+if [[ "$NETWORK" == *"/16" ]]; then
+  CIDR="${NETWORK%.*.*}.255.${SUBNET}/29"
+fi
+if [[ "$NETWORK" == *"/24" ]]; then
+  CIDR="${NETWORK%.*}.${SUBNET}/29"
+fi
+if [[ "$CIDR" == "" ]]; then
+  echo "cannot extract LB CIDR from network $NETWORK"
+  exit 1
+fi
 
 # Install CNI and LoadBalancer based on configuration
 if [[ "${CILIUM_ENABLED}" == "true" ]]; then
@@ -99,20 +118,6 @@ if [[ "${CILIUM_ENABLED}" == "true" ]]; then
   cilium status --wait --ignore-warnings
 
   # Configure Cilium LoadBalancer
-  NETWORK=$(docker network inspect kind \
-    | jq -r '.[0].IPAM.Config[] | select(.Gateway != null) | .Subnet' | grep -v ':')
-  CIDR=""
-  if [[ "$NETWORK" == *"/16" ]]; then
-    CIDR="${NETWORK%.*.*}.255.${SUBNET}/29"
-  fi
-  if [[ "$NETWORK" == *"/24" ]]; then
-    CIDR="${NETWORK%.*}.${SUBNET}/29"
-  fi
-  if [[ "$CIDR" == "" ]]; then
-    echo "cannot extract LB CIDR from network $NETWORK"
-    exit 1
-  fi
-
   cat <<EOF | kubectl apply -f -
 ---
 apiVersion: cilium.io/v2alpha1
@@ -141,25 +146,15 @@ EOF
 else
   echo "Installing MetalLB LoadBalancer..."
 
-  # Install MetalLB for LoadBalancer support
-  kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.12/config/manifests/metallb-native.yaml
-  kubectl wait --namespace metallb-system --for=condition=ready pod --selector=app=metallb --timeout=90s
+  # Install MetalLB using Helm chart
+  helm repo add metallb https://metallb.github.io/metallb
+  helm repo update &> /dev/null
+  helm upgrade --install metallb metallb/metallb \
+    --namespace metallb-system \
+    --create-namespace \
+    --wait
 
   # Configure MetalLB LoadBalancer
-  NETWORK=$(docker network inspect kind \
-    | jq -r '.[0].IPAM.Config[] | select(.Gateway != null) | .Subnet' | grep -v ':')
-  CIDR=""
-  if [[ "$NETWORK" == *"/16" ]]; then
-    CIDR="${NETWORK%.*.*}.255.${SUBNET}/29"
-  fi
-  if [[ "$NETWORK" == *"/24" ]]; then
-    CIDR="${NETWORK%.*}.${SUBNET}/29"
-  fi
-  if [[ "$CIDR" == "" ]]; then
-    echo "cannot extract LB CIDR from network $NETWORK"
-    exit 1
-  fi
-
   cat <<EOF | kubectl apply -f -
 ---
 apiVersion: metallb.io/v1beta1
@@ -180,11 +175,8 @@ spec:
   ipAddressPools:
   - ${CONTEXT}-pool
 EOF
-
 fi
 
-helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
-helm repo update &> /dev/null
 helm upgrade --install metrics-server metrics-server/metrics-server \
  -n kube-system --set args={--kubelet-insecure-tls}
 
