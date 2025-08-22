@@ -146,9 +146,6 @@ EOF
 else
   echo "Installing MetalLB LoadBalancer..."
 
-  # Install MetalLB using Helm chart
-  helm repo add metallb https://metallb.github.io/metallb
-  helm repo update &> /dev/null
   helm upgrade --install metallb metallb/metallb \
     --namespace metallb-system \
     --create-namespace \
