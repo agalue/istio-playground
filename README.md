@@ -17,17 +17,17 @@ The environment assumes we're interconnecting two clusters from different networ
 
 # Run
 
-> This is a work in progress
+By default, the script deploys a traditional Istio with proxies (in other words, it assumes `ISTIO_PROFILE=default`). 
 
-The following deploys a traditional Istio with proxies (in other words, it assumes `ISTIO_PROFILE=default`). 
-
-However, if you want to use ambient mode, run the following *before* the above commands:
+If you want to use ambient mode, run the following command:
 ```bash
 export ISTIO_PROFILE=ambient
-export CILIUM_ENABLED=false
 ```
 
-> DNS doesn't work well when having Cilium and Istio in Ambient mode. Disabling Cilium uses default Kind CNI and MetalLB for LoadBalancers.
+If for some reason you want to disable Cilium and use Kind's default CNI plus MetalLB, run the following command:
+```bash
+export CILIUM_ENABLED=false
+```
 
 ```bash
 # Create the root and intermediate CAs for the backplane
@@ -111,8 +111,8 @@ If you're using Ambient mode, run the following instead:
 ❯ istioctl zc workload --workload-namespace sample
 NAMESPACE POD NAME                                                                                                               ADDRESS     NODE        WAYPOINT PROTOCOL
 sample    east/SplitHorizonWorkload/istio-system/istio-eastwestgateway/192.168.97.248/sample/helloworld.sample.svc.cluster.local                         None     HBONE
-sample    helloworld-v2-6746879bdd-jmwtw                                                                                         10.12.1.173 west-worker None     HBONE
-sample    sleep-868c754c4b-22w5t                                                                                                 10.12.1.249 west-worker None     HBONE
+sample    helloworld-v2-6746879bdd-g4n4z                                                                                         10.12.1.240 west-worker None     HBONE
+sample    sleep-868c754c4b-pqjc2                                                                                                 10.12.1.202 west-worker None     HBONE
 ```
 
 For more details:
@@ -124,11 +124,11 @@ For more details:
         "5000": 5000
       service: ""
       workloadUid: east/SplitHorizonWorkload/istio-system/istio-eastwestgateway/192.168.97.248/sample/helloworld.sample.svc.cluster.local
-    west//Pod/sample/helloworld-v2-6746879bdd-jmwtw:
+    west//Pod/sample/helloworld-v2-6746879bdd-g4n4z:
       port:
         "5000": 5000
       service: ""
-      workloadUid: west//Pod/sample/helloworld-v2-6746879bdd-jmwtw
+      workloadUid: west//Pod/sample/helloworld-v2-6746879bdd-g4n4z
   hostname: helloworld.sample.svc.cluster.local
   ipFamilies: IPv4
   name: helloworld
@@ -138,14 +138,14 @@ For more details:
   subjectAltNames:
   - spiffe://cluster.local/ns/sample/sa/default
   vips:
-  - east/172.21.230.204
-  - west/172.22.46.175
+  - east/172.21.242.207
+  - west/172.22.160.179
 - endpoints:
-    west//Pod/sample/sleep-868c754c4b-22w5t:
+    west//Pod/sample/sleep-868c754c4b-pqjc2:
       port:
         "80": 80
       service: ""
-      workloadUid: west//Pod/sample/sleep-868c754c4b-22w5t
+      workloadUid: west//Pod/sample/sleep-868c754c4b-pqjc2
   hostname: sleep.sample.svc.cluster.local
   ipFamilies: IPv4
   name: sleep
@@ -153,8 +153,8 @@ For more details:
   ports:
     "80": 80
   vips:
-  - west/172.22.159.217
-```
+  - west/172.22.86.36
+  ```
 
 To test connectivity, run the following multiple times:
 

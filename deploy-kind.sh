@@ -3,9 +3,6 @@
 # Source: https://github.com/agalue/LGTM-PoC/blob/main/deploy-kind.sh
 # Modified to support both Cilium and MetalLB configurations for Istio multi-cluster setups
 # Use CILIUM_ENABLED=false for MetalLB (better for Istio ambient mode multi-cluster)
-#
-# IMPORTANT: Confirmed that Cilium conflicts with Istio 1.27.0 in ambient mode causing DNS issues
-# in multi-cluster setups. MetalLB resolves these DNS resolution problems between clusters.
 
 set -euo pipefail
 trap 's=$?; echo >&2 "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
@@ -65,9 +62,6 @@ networking:
   podSubnet: ${POD_CIDR}
   serviceSubnet: ${SVC_CIDR}
 EOF
-
-# Wait for the cluster to be ready
-kubectl wait --for=condition=Ready nodes --all --timeout=300s
 
 # Calculate LoadBalancer CIDR (common for both Cilium and MetalLB)
 NETWORK=$(docker network inspect kind \
