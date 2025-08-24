@@ -1,8 +1,7 @@
 #!/bin/bash
 #
-# Source: https://github.com/agalue/LGTM-PoC/blob/main/deploy-kind.sh
-# Modified to support both Cilium and MetalLB configurations for Istio multi-cluster setups
-# Use CILIUM_ENABLED=false for MetalLB (better for Istio ambient mode multi-cluster)
+# Supports both Cilium and MetalLB configurations for Istio multi-cluster setups
+# Use CILIUM_ENABLED=false for MetalLB
 
 set -euo pipefail
 trap 's=$?; echo >&2 "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
@@ -196,11 +195,36 @@ spec:
   meshConfig:
     accessLogFile: /dev/stdout
   components:
+    cni:
+      k8s:
+        resources:
+          limits:
+            cpu: '0'
+            memory: '0'
+          requests:
+            cpu: '0'
+            memory: '0'
+    ztunnel:
+      k8s:
+        resources:
+          limits:
+            cpu: '0'
+            memory: '0'
+          requests:
+            cpu: '0'
+            memory: '0'
     pilot:
       k8s:
         env:
         - name: AMBIENT_ENABLE_MULTI_NETWORK
           value: "true"
+        resources:
+          limits:
+            cpu: '0'
+            memory: '0'
+          requests:
+            cpu: '0'
+            memory: '0'
   values:
     global:
       meshID: mesh1
@@ -263,6 +287,15 @@ spec:
             cpu: '0'
             memory: '0'
   components:
+    pilot:
+      k8s:
+        resources:
+          limits:
+            cpu: '0'
+            memory: '0'
+          requests:
+            cpu: '0'
+            memory: '0'
     ingressGateways:
     - name: istio-eastwestgateway
       label:
